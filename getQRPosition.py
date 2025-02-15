@@ -147,7 +147,7 @@ def main():
             for obs in observations:
                 proj = obs["img_info"].project_point(pos)
                 if (proj is None): 
-                    erros.append(9999999.0)
+                    errors.append(9999999.0)
                 else:
                     errors.append(np.linalg.norm(proj - obs["pixel"]))
 
@@ -170,8 +170,12 @@ def main():
     print(f"Real size / calculated size: {scale}")
 
 
-    y_offset = QR_TL_REAL_HEIGHT_M - scale * corner_positions[0][1]
-    y_floor_gs = (0 - y_offset) / scale 
+    gs_up = corner_positions[0] - corner_positions[1]
+    gs_up = gs_up / np.linalg.norm(gs_up)
+    gs_up *= -1
+
+    gs_floor = corner_positions[0] + (QR_CODE_REAL_SIZE_M / scale) * gs_up
+
     print(f"Y position of floor {y_floor_gs}")
 
 
