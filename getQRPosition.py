@@ -4,12 +4,14 @@ import cv2
 import pycolmap
 from scipy.optimize import least_squares
 
-COLMAP_PATH = "../Long0.5xQR/sparse/0"
-IMAGE_FOLDER = "../Long0.5xQR/images"
+COLMAP_PATH = "../../Long0.5xQR/sparse/0"
+IMAGE_FOLDER = "../../Long0.5xQR/images"
 
 RANSAC_ITERS = 150
-THRESH = 2.0
+THRESH = 1.0
 
+QR_CODE_REAL_SIZE_M = 0.204
+QR_TL_REAL_HEIGHT_M = 1.0
 
 def load_colmap_data():
     return pycolmap.Reconstruction(COLMAP_PATH)
@@ -144,7 +146,10 @@ def main():
             errors = []
             for obs in observations:
                 proj = obs["img_info"].project_point(pos)
-                errors.append(np.linalg.norm(proj - obs["pixel"]))
+                if (proj is None): 
+                    erros.append(9999999.0)
+                else:
+                    errors.append(np.linalg.norm(proj - obs["pixel"]))
 
             inliers = [obs for obs,err in zip(observations, errors) if err < THRESH]
 
@@ -152,14 +157,22 @@ def main():
                 best_inliers = inliers
 
         if len(best_inliers) > 0:
+            print(f"Triangulated corner {corner_index} with {len(best_inliers)} inliers")
             corner_positions[corner_index] = triangulate_corner(best_inliers)
         else:
             print(f"Failed to triangulate corner {corner_index}")
 
-
-    print("Triangulated QR code corners:")
     for index, pos in corner_positions.items():
-        print(f"Corner {index}: {pos}")
+        print(f"Triangulated corner {index}: {pos}")
+
+    top_dist = np.linalg.norm(corner_positions[1] - corner_positions[0])
+    scale = QR_CODE_REAL_SIZE_M / top_dist;
+    print(f"Real size / calculated size: {scale}")
+
+
+    y_offset = QR_TL_REAL_HEIGHT_M - scale * corner_positions[0][1]
+    y_floor_gs = (0 - y_offset) / scale 
+    print(f"Y position of floor {y_floor_gs}")
 
 
 if __name__ == "__main__":
