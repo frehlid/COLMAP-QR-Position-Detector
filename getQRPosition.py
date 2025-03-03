@@ -87,7 +87,7 @@ def triangulate_corner(corners):
 def main():
     if len(sys.argv) < 3:
         print("Usage: python script.py <COLMAP_PATH> <IMAGE_FOLDER>")
-    sys.exit(1)
+        sys.exit(1)
 
     COLMAP_PATH = sys.argv[1]
     IMAGE_FOLDER = sys.argv[2]
@@ -134,13 +134,13 @@ def main():
 
                # print(f"ray dir: {ray_dir}, ray_origin: {ray_origin}")
 
-                corner_observations[corner_index].append({
-                    "camera":camera,
-                    "img_info": img_info,
-                    "pixel":pixel,
-                    "ray_origin": ray_origin,
-                    "ray_dir": ray_dir,
-                    })
+                qr_observations[qr_string][corner_index].append({
+                   "camera": camera,
+                   "img_info": img_info,
+                   "pixel": pixel,
+                   "ray_origin": ray_origin,
+                   "ray_dir": ray_dir,
+                })
 
     qr_positions = {}
 
