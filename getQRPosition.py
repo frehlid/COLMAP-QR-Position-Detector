@@ -14,8 +14,8 @@ THRESH = 1.0
 QR_CODE_REAL_SIZE_M = 0.204
 QR_TL_REAL_HEIGHT_M = 1.0
 
-def load_colmap_data():
-    return pycolmap.Reconstruction(COLMAP_PATH)
+def load_colmap_data(col_path):
+    return pycolmap.Reconstruction(col_path)
 
 # returns the 4 corners of qr code in image coordinates, if QR code is present
 # order is lop left, top right, bottom right, bottom left 
@@ -92,7 +92,7 @@ def main():
     COLMAP_PATH = sys.argv[1]
     IMAGE_FOLDER = sys.argv[2]
 
-    reconstruction = load_colmap_data()
+    reconstruction = load_colmap_data(COLMAP_PATH)
     print("Loaded COLMAP data")
 
     qr_observations = {}
