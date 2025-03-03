@@ -191,17 +191,19 @@ def main():
         for index, pos in corners.items():
             print(f"Corner {index}: {pos}")
 
-        top_dist = np.linalg.norm(corner[1] - corner[0])
+        top_dist = np.linalg.norm(corners[1] - corners[0])
         scale = QR_CODE_REAL_SIZE_M / top_dist;
         print(f"Real size / calculated size: {scale}")
 
-        gs_up = corner[0] - corner[3]
+        gs_up = corners[0] - corners[3]
         gs_up = gs_up / np.linalg.norm(gs_up)
         gs_up *= -1
 
-        gs_floor = corner[0] + (QR_CODE_REAL_SIZE_M / scale) * gs_up
+        gs_floor = corners[0] + (QR_CODE_REAL_SIZE_M / scale) * gs_up
 
         print(f"Position of floor {gs_floor}")
+
+        print("")
 
 
 if __name__ == "__main__":
