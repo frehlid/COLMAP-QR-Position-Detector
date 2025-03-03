@@ -30,10 +30,10 @@ def find_QR_corners(image_path):
     if not success or points is None:
         return None
 
-    print(f"Found QR code(s) in {image_path}")
 
     qr_results = []
     for qr_string, qr_corners in zip(decoded_info, points):
+        print(f"Found QR code {qr_string} in {image_path}")
         if qr_string:
             # reshape to (4,2)
             qr_corners = np.squeeze(qr_corners).astype(np.float32)
@@ -148,7 +148,7 @@ def main():
         corner_positions = {}
 
         for corner_index in range(4):
-            observations = corner_observations[corner_index]
+            observations = corners[corner_index]
             if len(observations) < 2:
                 ## TODO should I throw an error here?
                 print(f"Corner {corner_index} does not have enough observations...")
@@ -181,6 +181,9 @@ def main():
                 corner_positions[corner_index] = triangulate_corner(best_inliers)
             else:
                 print(f"Failed to triangulate corner {corner_index}")
+        if len(corner_positions) == 4:
+            qr_positions[qr_string] = corner_positions
+
 
     for qr_string, corners in qr_positions.items():
         print(f"Triangulated corners for QR code: {qr_string}")
