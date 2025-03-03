@@ -2,6 +2,7 @@ import numpy as np
 import os
 import cv2
 import pycolmap
+import sys
 from scipy.optimize import least_squares
 
 COLMAP_PATH = "../../Long0.5xQR/sparse/0"
@@ -84,6 +85,13 @@ def triangulate_corner(corners):
 
 
 def main():
+    if len(sys.argv) < 3:
+        print("Usage: python script.py <COLMAP_PATH> <IMAGE_FOLDER>")
+    sys.exit(1)
+
+    COLMAP_PATH = sys.argv[1]
+    IMAGE_FOLDER = sys.argv[2]
+
     reconstruction = load_colmap_data()
     print("Loaded COLMAP data")
 
