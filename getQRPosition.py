@@ -12,7 +12,9 @@ RANSAC_ITERS = 150
 THRESH = 1.0
 
 QR_CODE_REAL_SIZE_M = 0.204
-QR_TL_REAL_HEIGHT_M = 1.0
+QR_TL_REAL_HEIGHT_M = 1.55
+
+VALID_QRs = ["306A_Wall_1", "306A_Wall_2"]
 
 def load_colmap_data(col_path):
     return pycolmap.Reconstruction(col_path)
@@ -34,7 +36,7 @@ def find_QR_corners(image_path):
     qr_results = []
     for qr_string, qr_corners in zip(decoded_info, points):
         print(f"Found QR code {qr_string} in {image_path}")
-        if qr_string:
+        if (qr_string and qr_string in VALID_QRs):
             # reshape to (4,2)
             qr_corners = np.squeeze(qr_corners).astype(np.float32)
             qr_results.append((qr_string, qr_corners))
