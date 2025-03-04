@@ -3,6 +3,7 @@ import os
 import cv2
 import pycolmap
 import sys
+import json
 from scipy.optimize import least_squares
 
 COLMAP_PATH = "../../Long0.5xQR/sparse/0"
@@ -12,9 +13,24 @@ RANSAC_ITERS = 150
 THRESH = 1.0
 
 QR_CODE_REAL_SIZE_M = 0.204
-QR_TL_REAL_HEIGHT_M = 1.55
+QR_TL_REAL_HEIGHT_M = 1.5
 
 VALID_QRs = ["306A_Wall_1", "306A_Wall_2"]
+
+def save_positions_to_json(qr_positions, scale, floor, output_file):
+    qr_data = {
+            "scale": scale,
+            "floor": floor,
+            "qr_positions" : {
+                qr_string: {str(index): pos.tolist() for index, pos in corners.items()}
+                for qr_string, corners in qr_positions.items()
+            }
+    }
+
+    with open(output_file, "w") as f:
+        json.dump(qr_data, f, indent=4)
+
+    print(f"Saved QR positions to {output_file}")
 
 def load_colmap_data(col_path):
     return pycolmap.Reconstruction(col_path)
@@ -187,6 +203,8 @@ def main():
             qr_positions[qr_string] = corner_positions
 
 
+    scale = 0 
+    gs_floor = corners[0]
     for qr_string, corners in qr_positions.items():
         print(f"Triangulated corners for QR code: {qr_string}")
 
@@ -194,18 +212,26 @@ def main():
             print(f"Corner {index}: {pos}")
 
         top_dist = np.linalg.norm(corners[1] - corners[0])
-        scale = QR_CODE_REAL_SIZE_M / top_dist;
-        print(f"Real size / calculated size: {scale}")
+        scale_qr = QR_CODE_REAL_SIZE_M / top_dist;
+        print(f"Real size / calculated size: {scale_qr}")
 
-        gs_up = corners[0] - corners[3]
-        gs_up = gs_up / np.linalg.norm(gs_up)
-        gs_up *= -1
+        if (scale_qr != scale and qr_string != VALID_QRs[0]):
+            print(f"Scale computed from the qr {qr_string} does not match previous scale")
+            scale = scale_qr
 
-        gs_floor = corners[0] + (QR_CODE_REAL_SIZE_M / scale) * gs_up
+        # TODO only compute floor from one QR? compute from both? 
+        if (qr_string == VALID_QRs[0])
+            gs_up = corners[0] - corners[3]
+            gs_up = gs_up / np.linalg.norm(gs_up)
+            gs_up *= -1
 
-        print(f"Position of floor {gs_floor}")
+            gs_floor = corners[0] + (QR_CODE_REAL_SIZE_M / scale) * gs_up
+
+            print(f"Position of floor {gs_floor}")
 
         print("")
+
+    save_positions_to_json(qr_positions, scale, gs_floor, "qr_positions.json")
 
 
 if __name__ == "__main__":
