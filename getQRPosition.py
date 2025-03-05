@@ -213,11 +213,8 @@ def main():
 
         top_dist = np.linalg.norm(corners[1] - corners[0])
         scale_qr = QR_CODE_REAL_SIZE_M / top_dist;
-        print(f"Real size / calculated size: {scale_qr}")
-
-        if (scale_qr != scale and qr_string != VALID_QRs[0]):
-            print(f"Scale computed from the qr {qr_string} does not match previous scale")
-            scale = scale_qr
+        print(f"Real size / calculated size: {scale_qr} for {qr_string}")
+        scale += scale_qr
 
         # TODO only compute floor from one QR? compute from both? 
         if (qr_string == VALID_QRs[0])
@@ -231,6 +228,7 @@ def main():
 
         print("")
 
+    scale /= len(VALID_QRs)
     save_positions_to_json(qr_positions, scale, gs_floor, "qr_positions.json")
 
 
