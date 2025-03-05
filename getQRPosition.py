@@ -20,7 +20,7 @@ VALID_QRs = ["306A_Wall_1", "306A_Wall_2"]
 def save_positions_to_json(qr_positions, scale, floor, output_file):
     qr_data = {
             "scale": scale,
-            "floor": floor,
+            "floor": floor.tolist(),
             "qr_positions" : {
                 qr_string: {str(index): pos.tolist() for index, pos in corners.items()}
                 for qr_string, corners in qr_positions.items()
@@ -222,13 +222,16 @@ def main():
             gs_up = gs_up / np.linalg.norm(gs_up)
             gs_up *= -1
 
-            gs_floor = corners[0] + (QR_CODE_REAL_SIZE_M / scale) * gs_up
+            gs_floor = corners[0] + (QR_CODE_REAL_SIZE_M / scale_qr) * gs_up
 
             print(f"Position of floor {gs_floor}")
 
         print("")
 
     scale /= len(VALID_QRs)
+    
+    print(f"Average scale = {scale}")
+
     save_positions_to_json(qr_positions, scale, gs_floor, "qr_positions.json")
 
 
