@@ -217,7 +217,7 @@ def main():
         scale += scale_qr
 
         # TODO only compute floor from one QR? compute from both? 
-        if (qr_string == VALID_QRs[0])
+        if (qr_string == VALID_QRs[0]):
             gs_up = corners[0] - corners[3]
             gs_up = gs_up / np.linalg.norm(gs_up)
             gs_up *= -1
