@@ -222,7 +222,7 @@ def main():
             gs_up = gs_up / np.linalg.norm(gs_up)
             gs_up *= -1
 
-            gs_floor = corners[0] + (QR_CODE_REAL_SIZE_M / scale_qr) * gs_up
+            gs_floor = corners[0] + (QR_TL_REAL_HEIGHT_M / scale_qr) * gs_up
 
             print(f"Position of floor {gs_floor}")
 
