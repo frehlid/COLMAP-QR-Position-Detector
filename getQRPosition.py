@@ -12,10 +12,10 @@ IMAGE_FOLDER = "../../Long0.5xQR/images"
 RANSAC_ITERS = 150
 THRESH = 1.0
 
-QR_CODE_REAL_SIZE_M = 0.204
+QR_CODE_REAL_SIZE_M = [0.189, 0.189, 0.189]
 QR_TL_REAL_HEIGHT_M = 1.5
 
-VALID_QRs = ["306A_Wall_1", "306A_Wall_2"]
+VALID_QRs = ["306A_Wall_1", "306A_Wall_2", "306A_Wall_3"]
 
 def save_positions_to_json(qr_positions, scale, floor, output_file):
     qr_data = {
@@ -203,7 +203,7 @@ def main():
             qr_positions[qr_string] = corner_positions
 
 
-    scale = 0 
+    scale_estimates = {'x': [], 'y': [], 'z': []}
     gs_floor = corners[0]
     for qr_string, corners in qr_positions.items():
         print(f"Triangulated corners for QR code: {qr_string}")
@@ -211,20 +211,34 @@ def main():
         for index, pos in corners.items():
             print(f"Corner {index}: {pos}")
 
-        top_dist = np.linalg.norm(corners[1] - corners[0])
-        scale_qr = QR_CODE_REAL_SIZE_M / top_dist;
-        print(f"Real size / calculated size: {scale_qr} for {qr_string}")
-        scale += scale_qr
+        edge_h = corners[1] - corners[0]
+        edge_v = corners[3] - corners[0]
 
-        # TODO only compute floor from one QR? compute from both? 
-        if (qr_string == VALID_QRs[0]):
+        if qr_string in [VALID_QRs[0], VALID_QRs[1]]:
+            if abs(edge_h[0]) > 1e-6:
+                scale_x_qr = QR_CODE_REAL_SIZE_M[0] / abs(edge_h[0])
+                scale_estimates['x'].append(scale_x_qr)
+                print(f"Scale x for {qr_string}: {scale_x_qr}")
+
+            if abs(edge_v[1]) > 1e-6:
+                scale_y_qr = QR_CODE_REAL_SIZE_M[1] / abs(edge_v[1])
+                scale_estimates['y'].append(scale_y_qr)
+                print(f"Scale y for {qr_string}: {scale_y_qr}")
+
+        # the last qr is perpendicular so we handle differently
+        elif qr_string == VALID_QRs[2]:
+            if abs(edge_h[2]) > 1e-6:
+                scale_z_qr = QR_CODE_REAL_SIZE_M[2] / abs(edge_h[2])
+                scale_estimates['z'].append(scale_z_qr)
+                print(f"Scale z for {qr_string}: {scale_z_qr}")
+
+            # compute floor from this one (easier to measure in physical space)
             gs_up = corners[0] - corners[3]
             gs_up = gs_up / np.linalg.norm(gs_up)
             gs_up *= -1
-
-            gs_floor = corners[0] + (QR_TL_REAL_HEIGHT_M / scale_qr) * gs_up
-
+            gs_floor = corners[0] + (QR_TL_REAL_HEIGHT_M / scale_z_qr) * gs_up
             print(f"Position of floor {gs_floor}")
+
 
         print("")
 
