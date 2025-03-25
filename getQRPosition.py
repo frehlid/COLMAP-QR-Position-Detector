@@ -5,6 +5,8 @@ import pycolmap
 import sys
 import json
 from scipy.optimize import least_squares
+from pyzbar.pyzbar import decode
+from scipy.spatial.transform import Rotation as R
 
 COLMAP_PATH = "../../Long0.5xQR/sparse/0"
 IMAGE_FOLDER = "../../Long0.5xQR/images"
@@ -13,13 +15,12 @@ RANSAC_ITERS = 150
 THRESH = 1.0
 
 QR_CODE_REAL_SIZE_M = [0.189, 0.189, 0.189]
-QR_TL_REAL_HEIGHT_M = 1.5
+QR_TL_REAL_HEIGHT_M = 1.385 + QR_CODE_REAL_SIZE_M[0]
 
 VALID_QRs = ["306A_Wall_1", "306A_Wall_2", "306A_Wall_3"]
 
-def save_positions_to_json(qr_positions, scale, floor, output_file):
+def save_positions_to_json(qr_positions, floor, output_file):
     qr_data = {
-            "scale": scale,
             "floor": floor.tolist(),
             "qr_positions" : {
                 qr_string: {str(index): pos.tolist() for index, pos in corners.items()}
@@ -35,6 +36,18 @@ def save_positions_to_json(qr_positions, scale, floor, output_file):
 def load_colmap_data(col_path):
     return pycolmap.Reconstruction(col_path)
 
+
+def order_points(pts):
+    rect = np.zeros((4, 2), dtype="float32")
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
+    return rect
+
+
 # returns the 4 corners of qr code in image coordinates, if QR code is present
 # order is lop left, top right, bottom right, bottom left 
 def find_QR_corners(image_path):
@@ -42,22 +55,28 @@ def find_QR_corners(image_path):
     if img is None:
         return None
 
-    QRDetector = cv2.QRCodeDetector()
-
-    success, decoded_info, points, _ = QRDetector.detectAndDecodeMulti(img)
-    if not success or points is None:
+    decoded_objs = decode(img)
+    if not decoded_objs:
         return None
 
-
     qr_results = []
-    for qr_string, qr_corners in zip(decoded_info, points):
-        print(f"Found QR code {qr_string} in {image_path}")
-        if (qr_string and qr_string in VALID_QRs):
-            # reshape to (4,2)
-            qr_corners = np.squeeze(qr_corners).astype(np.float32)
-            qr_results.append((qr_string, qr_corners))
-
+    for obj in decoded_objs:
+        qr_string = obj.data.decode("utf-8")
+        if qr_string and qr_string in VALID_QRs:
+            points = obj.polygon
+            pts = np.array([[p.x, p.y] for p in points], dtype=np.float32)
+            if pts.shape[0] != 4:
+                # If we don't have exactly four points, approximate a quadrilateral
+                hull = cv2.convexHull(pts)
+                if hull.shape[0] == 4:
+                    pts = hull.reshape((4, 2))
+                else:
+                    continue
+            pts = order_points(pts)
+            print(f"Found QR code {qr_string} in {image_path}")
+            qr_results.append((qr_string, pts))
     return qr_results
+
 
 
 def residual(x, observations):
@@ -100,6 +119,51 @@ def triangulate_corner(corners):
     # optimizing the 3d position of the QR code by minimizing error when reprojecting
     result = least_squares(residual, inital_guess, args=(corners,))
     return result.x # final 3d position
+
+
+def compute_rotations(qr_positions):
+    candidate_rotations = []
+
+    for qr_string, corners in qr_positions.items():
+        if not all(index in corners for index in [0, 1, 3]):
+            print(f"QR code {qr_string} does not have all required corners for rotation estimation")
+            continue
+        
+        if qr_string == VALID_QRs[2]:
+            local_z = corners[1] - corners[0]
+            local_z /= np.linalg.norm(local_z)
+
+            local_y = corners[3] - corners[0]
+            local_y /= np.linalg.norm(local_y)
+
+            # estimate with cross product
+            local_x = np.cross(local_y, local_z)
+            local_x /= np.linalg.norm(local_x)
+
+            R_local = np.column_stack((local_x, local_y, local_z))
+            R_candidate = R_local.T # this brings scene into unity world frame (unit axes)
+        else:
+            local_x = corners[1] - corners[0]
+            local_x /= np.linalg.norm(local_x)
+
+            local_y = corners[3] - corners[0]
+            local_y /= np.linalg.norm(local_y)
+
+            local_z = np.cross(local_x, local_y)
+            local_z /= np.linalg.norm(local_z)
+
+            R_local = np.column_stack((local_x, local_y, local_z))
+            R_candidate = R_local.T # this brings scene into unity world frame (unit axes)
+        
+        candidate_rotations.append(R.from_matrix(R_candidate))
+    
+    # average for robustness!
+    if candidate_rotations:
+        avg_rotation = R.mean(candidate_rotations)
+        avg_rotation_matrix = avg_rotation.as_matrix()
+        print("Averaged Rotation Matrix for transforming scene to Unity coordinates:")
+        print(avg_rotation_matrix)
+
 
 
 def main():
@@ -241,12 +305,10 @@ def main():
 
 
         print("")
-
-    scale /= len(VALID_QRs)
     
-    print(f"Average scale = {scale}")
+    compute_rotations(qr_positions=qr_positions)
 
-    save_positions_to_json(qr_positions, scale, gs_floor, "qr_positions.json")
+    save_positions_to_json(qr_positions, gs_floor, "qr_positions.json")
 
 
 if __name__ == "__main__":
